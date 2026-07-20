@@ -4,10 +4,11 @@ import { config } from './config/index.js';
 import { logger } from './logger/index.js';
 import { connectDatabase, disconnectDatabase } from './database/index.js';
 import { connectRedis, disconnectRedis } from './redis/index.js';
+import { workerPool } from './workers/worker-pool.js';
 
-let server: http.Server;
+let server;
 
-async function startServer(): Promise<void> {
+async function startServer() {
   try {
     // 1. Establish database connection
     await connectDatabase();
@@ -15,16 +16,21 @@ async function startServer(): Promise<void> {
     // 2. Establish Redis connection
     connectRedis();
 
-    // 3. Create HTTP Server
+    // 3. Initialize WorkerPool
+    workerPool.initialize();
+
+    // 4. Create HTTP Server
     server = http.createServer(app);
 
-    // 4. Start listening
+    // 5. Start listening
     server.listen(config.port, () => {
-      logger.info(`🚀 FleetDash Backend listening on port ${config.port} in ${config.nodeEnv} mode`);
+      logger.info(
+        `🚀 FleetDash Backend listening on port ${config.port} in ${config.nodeEnv} mode`,
+      );
     });
 
-    // 5. Setup signal interceptors for graceful shutdowns
-    const handleShutdown = async (signal: string) => {
+    // 6. Setup signal interceptors for graceful shutdowns
+    const handleShutdown = async (signal) => {
       logger.warn(`Received ${signal}. Starting graceful shutdown...`);
 
       // Close Express Server first to stop accepting new requests
@@ -37,7 +43,8 @@ async function startServer(): Promise<void> {
           }
 
           try {
-            // Disconnect databases
+            // Disconnect databases and shutdown worker pool
+            await workerPool.shutdown();
             await disconnectDatabase();
             await disconnectRedis();
             logger.info('Graceful shutdown completed. Exiting process.');
@@ -58,9 +65,9 @@ async function startServer(): Promise<void> {
       }
     };
 
+    process.on('SIGREST', () => handleShutdown('SIGREST')); // standard fallback
     process.on('SIGTERM', () => handleShutdown('SIGTERM'));
     process.on('SIGINT', () => handleShutdown('SIGINT'));
-
   } catch (error) {
     logger.error('FATAL: Failed to start FleetDash application server:', error);
     process.exit(1);
@@ -68,14 +75,12 @@ async function startServer(): Promise<void> {
 }
 
 // Global unhandled promise rejection trap
-process.on('unhandledRejection', (reason: Error) => {
+process.on('unhandledRejection', (reason) => {
   logger.error('Unhandled Promise Rejection caught:', reason);
-  // Optional: Gracefully restart or shutdown
 });
 
-process.on('uncaughtException', (error: Error) => {
+process.on('uncaughtException', (error) => {
   logger.error('Uncaught Exception caught:', error);
-  // Force exit on uncaught exceptions is usually recommended
   process.exit(1);
 });
 

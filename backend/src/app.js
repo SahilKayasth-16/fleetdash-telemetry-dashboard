@@ -1,4 +1,4 @@
-import express, { Application } from 'express';
+import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import compression from 'compression';
@@ -8,7 +8,7 @@ import { logger } from './logger/index.js';
 import apiRouter from './routes/index.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 
-const app: Application = express();
+const app = express();
 
 // Set security headers
 app.use(helmet());
@@ -34,15 +34,14 @@ app.use(express.urlencoded({ extended: true }));
 // Setup HTTP request logging via morgan piped to winston
 const morganFormat = config.isProduction ? 'combined' : 'dev';
 const morganStream = {
-  write: (message: string) => {
+  write: (message) => {
     logger.info(message.trim());
   },
 };
 app.use(morgan(morganFormat, { stream: morganStream }));
 
-// Mount API routes under /api (recommended for standard architectures) or mount root for health
+// Mount API routes
 app.use('/api', apiRouter);
-// Fallback path mapping at root level too (specifically for GET /health if needed directly)
 app.use('/', apiRouter);
 
 // Handle 404 Route Not Found

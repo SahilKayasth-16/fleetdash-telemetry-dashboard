@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 import { config } from '../config/index.js';
 import { logger } from '../logger/index.js';
 
-export async function connectDatabase(): Promise<void> {
+export async function connectDatabase() {
   try {
     mongoose.connection.on('connecting', () => {
       logger.info('Connecting to MongoDB...');
@@ -27,10 +27,10 @@ export async function connectDatabase(): Promise<void> {
   }
 }
 
-export function isDatabaseConnected(): boolean {
+export function isDatabaseConnected() {
   return mongoose.connection.readyState === 1;
 }
 
-export async function disconnectDatabase(): Promise<void> {
+export async function disconnectDatabase() {
   await mongoose.disconnect();
 }

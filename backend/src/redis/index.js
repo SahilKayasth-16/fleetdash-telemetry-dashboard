@@ -2,10 +2,10 @@ import { Redis } from 'ioredis';
 import { config } from '../config/index.js';
 import { logger } from '../logger/index.js';
 
-let redisClient: Redis | null = null;
+let redisClient = null;
 let isConnected = false;
 
-export function connectRedis(): Redis {
+export function connectRedis() {
   if (redisClient) {
     return redisClient;
   }
@@ -13,7 +13,7 @@ export function connectRedis(): Redis {
   logger.info('Initializing Redis client...');
   redisClient = new Redis(config.redisUrl, {
     maxRetriesPerRequest: 3,
-    retryStrategy(times: number) {
+    retryStrategy(times) {
       const delay = Math.min(times * 100, 2000);
       logger.warn(`Redis connection retry attempt ${times} after ${delay}ms`);
       return delay;
@@ -29,7 +29,7 @@ export function connectRedis(): Redis {
     logger.info('Redis client connected and ready');
   });
 
-  redisClient.on('error', (err: Error) => {
+  redisClient.on('error', (err) => {
     logger.error('Redis connection error:', err);
   });
 
@@ -41,18 +41,18 @@ export function connectRedis(): Redis {
   return redisClient;
 }
 
-export function getRedisClient(): Redis {
+export function getRedisClient() {
   if (!redisClient) {
     return connectRedis();
   }
   return redisClient;
 }
 
-export function isRedisConnected(): boolean {
+export function isRedisConnected() {
   return isConnected && redisClient !== null && redisClient.status === 'ready';
 }
 
-export async function disconnectRedis(): Promise<void> {
+export async function disconnectRedis() {
   if (redisClient) {
     await redisClient.quit();
     redisClient = null;

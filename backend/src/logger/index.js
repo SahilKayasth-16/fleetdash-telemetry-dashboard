@@ -8,12 +8,9 @@ const devLogFormat = printf(({ level, message, timestamp, stack }) => {
   return `[${timestamp}] [${level}]: ${stack || message}`;
 });
 
-const formats = [
-  errors({ stack: true }),
-  timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
-];
+const formats = [errors({ stack: true }), timestamp({ format: 'YYYY-MM-DD HH:mm:ss' })];
 
-const transports: winston.transport[] = [];
+const transports = [];
 
 if (config.isProduction) {
   // File transports for production
@@ -40,11 +37,7 @@ if (config.isProduction) {
   transports.push(
     new winston.transports.Console({
       level: 'debug',
-      format: combine(
-        colorize(),
-        ...formats,
-        devLogFormat,
-      ),
+      format: combine(colorize(), ...formats, devLogFormat),
     }),
   );
 }
@@ -54,3 +47,5 @@ export const logger = winston.createLogger({
   transports,
   exitOnError: false,
 });
+
+export default logger;

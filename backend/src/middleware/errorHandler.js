@@ -1,20 +1,8 @@
-import { Request, Response, NextFunction } from 'express';
 import { logger } from '../logger/index.js';
 import { config } from '../config/index.js';
 
-export interface AppError extends Error {
-  statusCode?: number;
-  errors?: unknown;
-}
-
 // Global error handling middleware
-export function errorHandler(
-  err: AppError,
-  req: Request,
-  res: Response,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  _next: NextFunction,
-): void {
+export function errorHandler(err, req, res, _next) {
   const statusCode = err.statusCode || 500;
   const message = err.message || 'Internal Server Error';
 
@@ -34,7 +22,7 @@ export function errorHandler(
 }
 
 // 404 Route Not Found middleware
-export function notFoundHandler(req: Request, res: Response): void {
+export function notFoundHandler(req, res) {
   logger.warn(`Route not found: ${req.method} ${req.originalUrl}`);
   res.status(404).json({
     status: 'error',
