@@ -5,6 +5,8 @@ import { logger } from './logger/index.js';
 import { connectDatabase, disconnectDatabase } from './database/index.js';
 import { connectRedis, disconnectRedis } from './redis/index.js';
 import { workerPool } from './workers/worker-pool.js';
+import { initializeSocket } from './socket/socket.js';
+import { redisSubscriberService } from './services/redisSubscriber.service.js';
 
 let server;
 
@@ -22,14 +24,20 @@ async function startServer() {
     // 4. Create HTTP Server
     server = http.createServer(app);
 
-    // 5. Start listening
+    // 5. Initialize Socket.io Server (attaches to HTTP listener)
+    initializeSocket(server);
+
+    // 6. Initialize Redis Subscriber (subscribes to telemetry events channel)
+    redisSubscriberService.initialize();
+
+    // 7. Start listening
     server.listen(config.port, () => {
       logger.info(
         `🚀 FleetDash Backend listening on port ${config.port} in ${config.nodeEnv} mode`,
       );
     });
 
-    // 6. Setup signal interceptors for graceful shutdowns
+    // 8. Setup signal interceptors for graceful shutdowns
     const handleShutdown = async (signal) => {
       logger.warn(`Received ${signal}. Starting graceful shutdown...`);
 
@@ -43,7 +51,8 @@ async function startServer() {
           }
 
           try {
-            // Disconnect databases and shutdown worker pool
+            // Disconnect subscriber, shutdown pool, and close DB links
+            await redisSubscriberService.shutdown();
             await workerPool.shutdown();
             await disconnectDatabase();
             await disconnectRedis();
@@ -65,7 +74,6 @@ async function startServer() {
       }
     };
 
-    process.on('SIGREST', () => handleShutdown('SIGREST')); // standard fallback
     process.on('SIGTERM', () => handleShutdown('SIGTERM'));
     process.on('SIGINT', () => handleShutdown('SIGINT'));
   } catch (error) {
